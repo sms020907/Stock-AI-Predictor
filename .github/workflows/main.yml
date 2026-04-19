@@ -1,13 +1,12 @@
-name: Stock AI Predictor Dual Mode
+name: Stock AI Predictor Test Mode
 
 on:
-  # 1. 텔레그램 리모컨 버튼 클릭 시 즉시 실행 (수동)
-  workflow_dispatch:
+  workflow_dispatch: # 버튼 수동 실행 유지
 
-  # 2. 매일 아침 08:30 자동 실행 (스케줄러)
   schedule:
-    # 한국 시간(KST) 08:30은 UTC 기준으로 전날 23:30입니다.
-    - cron: '30 23 * * *'
+    # 한국 시간 오후 5:00 = UTC 오전 8:00
+    # 분 시 일 월 요일
+    - cron: '0 8 * * *'
 
 jobs:
   analyze:
@@ -27,8 +26,6 @@ jobs:
 
       - name: Run Analysis Script
         env:
-          # GitHub Secrets에 등록된 값을 환경 변수로 불러옵니다.
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        # 민성님의 파이썬 파일 이름이 'analysis.py'가 아니라면 해당 이름으로 수정하세요!
-        run: python analysis.py
+        run: python analysis.py # 파일 이름이 다르면 꼭 수정하세요!
