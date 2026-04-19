@@ -16,8 +16,8 @@ def get_weekly_sentiment(name):
         res = requests.get(url, timeout=10)
         soup = BeautifulSoup(res.content, 'xml')
         items = soup.find_all('item')
-        pos_words = ['상승', '호재', '매수', '돌파', '성장', '흑자', '최고']
-        neg_words = ['하락', '악재', '매도', '급락', '우려', '적자', '최저']
+        pos_words = ['상승', '호재', '매수', '돌파', '성장', '흑자', '최고', '상향']
+        neg_words = ['하락', '악재', '매도', '급락', '우려', '적자', '최저', '하향']
         for item in items[:10]:
             text = item.title.text
             for pw in pos_words: 
@@ -39,14 +39,16 @@ def send_telegram(file_path):
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
     if not token or not chat_id: return
     try:
-        msg = f"📊 [{datetime.now().strftime('%m/%d')}] KOSPI 100 AI 기술적 분석 리포트 완료"
+        msg = f"📊 [{datetime.now().strftime('%m/%d')}] KOSPI 100 개장 전 AI 분석 리포트"
         requests.get(f"https://api.telegram.org/bot{token}/sendMessage", params={'chat_id': chat_id, 'text': msg})
         with open(file_path, 'rb') as f:
             requests.post(f"https://api.telegram.org/bot{token}/sendDocument", data={'chat_id': chat_id}, files={'document': f})
+        print("✅ 텔레그램 발송 완료")
     except: pass
 
+# 분석 실행
 try:
-    print("🚀 KOSPI 100 기술적 지표 분석 시작...")
+    print("🚀 KOSPI 100 지표 분석 및 예측 시작...")
     df_kospi = fdr.StockListing('KOSPI')
     top_100 = df_kospi.head(100)
     
@@ -54,23 +56,19 @@ try:
     for idx, row in top_100.iterrows():
         name, code = row['Name'], row['Code']
         try:
-            # 1. 데이터 수집 (지표 계산을 위해 30일치)
             df = fdr.DataReader(code, (datetime.now() - timedelta(days=40)).strftime('%Y-%m-%d'))
+            if len(df) < 20: continue
+            
             curr_price = int(df['Close'].iloc[-1])
-            
-            # 2. 기술적 지표 계산
-            ma20 = df['Close'].rolling(window=20).mean().iloc[-1] # 20일 이동평균선
-            rsi = calculate_rsi(df).iloc[-1] # RSI (과매수/과매도 지표)
-            
-            # 3. 뉴스 점수
+            ma20 = df['Close'].rolling(window=20).mean().iloc[-1]
+            rsi = calculate_rsi(df).iloc[-1]
             news_score = get_weekly_sentiment(name)
             
-            # 4. 종합 예측 점수 (뉴스 40% + 기술적 지표 60%)
-            # - 주가가 20일선 위에 있으면 +, RSI가 30 미만(과매도)이면 + 점수 부여
+            # 종합 점수 계산 (기술 60% + 뉴스 40%)
             tech_score = 0
             if curr_price > ma20: tech_score += 1.5
-            if rsi < 35: tech_score += 2.0  # 저평가 매수 기회
-            if rsi > 70: tech_score -= 1.5  # 고평가 위험
+            if rsi < 35: tech_score += 2.0
+            if rsi > 70: tech_score -= 1.5
             
             total_val = round((news_score * 0.4) + (tech_score * 0.6), 2)
             prediction = "강력 매수" if total_val > 2.0 else "매수 우세" if total_val > 0.5 else "관망" if total_val > -0.5 else "매도 주의"
@@ -80,16 +78,16 @@ try:
                 '종목명': name,
                 '현재가': curr_price,
                 '20일평균': int(ma20),
-                'RSI(심리도)': round(rsi, 1),
+                'RSI(심리)': round(rsi, 1),
                 '뉴스점수': news_score,
                 'AI종합점수': total_val,
                 '최종전망': prediction
             })
-            print(f"✅ {name} 분석 완료 (RSI: {round(rsi,1)})")
+            print(f"✅ {name} 완료")
         except: continue
 
     if final_data:
-        save_name = 'KOSPI100_Advanced_Report.xlsx'
+        save_name = 'KOSPI100_Morning_Report.xlsx'
         pd.DataFrame(final_data).to_excel(save_name, index=False)
         send_telegram(save_name)
 except Exception as e:
