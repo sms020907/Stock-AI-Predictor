@@ -6,7 +6,7 @@ on:
   schedule:
     # 한국 시간 오후 4:45 = UTC 오전 7:45
     # 분 시 일 월 요일
-    - cron: '45 07 * * *'
+    - cron: '00 10 * * *'
 
 jobs:
   analyze:
