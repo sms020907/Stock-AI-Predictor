@@ -39,7 +39,7 @@ def send_telegram(file_path):
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
     if not token or not chat_id: return
     try:
-        msg = f"📊 [{datetime.now().strftime('%m/%d')}] KOSPI 100 개장 전 AI 분석 리포트"
+        msg = f"📊 [{datetime.now().strftime('%m/%d %H:%M')}] KOSPI 100 실시간 테스트 분석 리포트"
         requests.get(f"https://api.telegram.org/bot{token}/sendMessage", params={'chat_id': chat_id, 'text': msg})
         with open(file_path, 'rb') as f:
             requests.post(f"https://api.telegram.org/bot{token}/sendDocument", data={'chat_id': chat_id}, files={'document': f})
@@ -48,23 +48,27 @@ def send_telegram(file_path):
 
 # 분석 실행
 try:
-    print("🚀 KOSPI 100 지표 분석 및 예측 시작...")
+    print("🚀 데이터 분석 및 지표 계산 시작...")
     df_kospi = fdr.StockListing('KOSPI')
     top_100 = df_kospi.head(100)
     
     final_data = []
+    # 충분한 데이터 확보를 위해 50일전부터 가져옴
+    start_search = (datetime.now() - timedelta(days=50)).strftime('%Y-%m-%d')
+    
     for idx, row in top_100.iterrows():
         name, code = row['Name'], row['Code']
         try:
-            df = fdr.DataReader(code, (datetime.now() - timedelta(days=40)).strftime('%Y-%m-%d'))
-            if len(df) < 20: continue
+            df = fdr.DataReader(code, start_search)
+            if len(df) < 20: continue # 데이터 부족 시 패스
             
             curr_price = int(df['Close'].iloc[-1])
             ma20 = df['Close'].rolling(window=20).mean().iloc[-1]
-            rsi = calculate_rsi(df).iloc[-1]
+            rsi_series = calculate_rsi(df)
+            rsi = rsi_series.iloc[-1]
             news_score = get_weekly_sentiment(name)
             
-            # 종합 점수 계산 (기술 60% + 뉴스 40%)
+            # 종합 점수 및 예측 로직
             tech_score = 0
             if curr_price > ma20: tech_score += 1.5
             if rsi < 35: tech_score += 2.0
@@ -77,8 +81,8 @@ try:
                 '순위': len(final_data) + 1,
                 '종목명': name,
                 '현재가': curr_price,
-                '20일평균': int(ma20),
-                'RSI(심리)': round(rsi, 1),
+                '20일평균': int(ma20) if not np.isnan(ma20) else 0,
+                'RSI(심리)': round(rsi, 1) if not np.isnan(rsi) else 50,
                 '뉴스점수': news_score,
                 'AI종합점수': total_val,
                 '최종전망': prediction
@@ -87,7 +91,7 @@ try:
         except: continue
 
     if final_data:
-        save_name = 'KOSPI100_Morning_Report.xlsx'
+        save_name = 'KOSPI100_Test_Report.xlsx'
         pd.DataFrame(final_data).to_excel(save_name, index=False)
         send_telegram(save_name)
 except Exception as e:
