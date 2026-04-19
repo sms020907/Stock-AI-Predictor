@@ -1,5 +1,5 @@
 import pandas as pd
-import FinanceDataReader as fdr
+import FinanceDataReader as fdr  # F, D, R을 대문자로 수정!
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -28,26 +28,21 @@ def get_weekly_sentiment(name):
     return score
 
 def send_telegram(file_path):
-    # 환경변수 앞뒤 공백 제거 (매우 중요!)
     token = os.environ.get('TELEGRAM_TOKEN', '').strip()
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
-    
     if token and chat_id:
         try:
             msg = "📢 [AI 투자 리포트] 분석이 완료되었습니다!"
             requests.get(f"https://api.telegram.org/bot{token}/sendMessage", 
                          params={'chat_id': chat_id, 'text': msg}, timeout=10)
-            
             with open(file_path, 'rb') as f:
                 requests.post(f"https://api.telegram.org/bot{token}/sendDocument", 
                               data={'chat_id': chat_id}, files={'document': f}, timeout=20)
             print("✅ 텔레그램 전송 완료")
         except Exception as e:
             print(f"❌ 전송 중 에러: {e}")
-    else:
-        print("⚠️ 토큰이나 ID가 설정되지 않았습니다.")
 
-# 메인 로직
+# 메인 실행
 THEMES = {'반도체': ['삼성전자', 'SK하이닉스'], '이차전지': ['에코프로', 'LG에너지솔루션']}
 stock_results = []
 
@@ -63,7 +58,7 @@ try:
                 curr_price = int(df['Close'].iloc[-1])
                 score = get_weekly_sentiment(name)
                 stock_results.append({'테마': theme, '종목명': name, '현재가': curr_price, '뉴스점수': score})
-                print(f"✅ {name} 분석 완료")
+                print(f"✅ {name} 완료")
             except: continue
 
     if stock_results:
@@ -71,4 +66,4 @@ try:
         pd.DataFrame(stock_results).to_excel(save_name, index=False)
         send_telegram(save_name)
 except Exception as e:
-    print(f"🔥 치명적 에러: {e}")
+    print(f"🔥 에러 발생: {e}")
