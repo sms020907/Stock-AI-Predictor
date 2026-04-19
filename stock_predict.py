@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import os
+import numpy as np
 
 def get_weekly_sentiment(name):
     end_date = datetime.now()
@@ -26,63 +27,70 @@ def get_weekly_sentiment(name):
     except: pass
     return round(score, 2)
 
+def calculate_rsi(df, period=14):
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1+rs))
+
 def send_telegram(file_path):
     token = os.environ.get('TELEGRAM_TOKEN', '').strip()
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
     if not token or not chat_id: return
-
     try:
-        msg = f"📊 [{datetime.now().strftime('%m/%d')}] KOSPI TOP 100 AI 분석 리포트가 완료되었습니다."
+        msg = f"📊 [{datetime.now().strftime('%m/%d')}] KOSPI 100 AI 기술적 분석 리포트 완료"
         requests.get(f"https://api.telegram.org/bot{token}/sendMessage", params={'chat_id': chat_id, 'text': msg})
         with open(file_path, 'rb') as f:
             requests.post(f"https://api.telegram.org/bot{token}/sendDocument", data={'chat_id': chat_id}, files={'document': f})
-        print("✅ 텔레그램 발송 완료")
-    except Exception as e:
-        print(f"❌ 전송 실패: {e}")
+    except: pass
 
-# 메인 로직 시작
 try:
-    print("🚀 KOSPI 상위 100개 종목 수집 중...")
+    print("🚀 KOSPI 100 기술적 지표 분석 시작...")
     df_kospi = fdr.StockListing('KOSPI')
-    # 시가총액 순 정렬 후 상위 100개 추출 (FinanceDataReader 버전에 따라 'MarCap' 또는 'Stocks' 기준)
     top_100 = df_kospi.head(100)
     
     final_data = []
     for idx, row in top_100.iterrows():
-        name = row['Name']
-        code = row['Code']
+        name, code = row['Name'], row['Code']
         try:
-            # 주가 데이터 수집
-            df = fdr.DataReader(code, (datetime.now() - timedelta(days=10)).strftime('%Y-%m-%d'))
+            # 1. 데이터 수집 (지표 계산을 위해 30일치)
+            df = fdr.DataReader(code, (datetime.now() - timedelta(days=40)).strftime('%Y-%m-%d'))
             curr_price = int(df['Close'].iloc[-1])
-            prev_price = int(df['Close'].iloc[-2])
-            change_percent = round(((curr_price - prev_price) / prev_price) * 100, 2)
             
-            # 뉴스 분석 점수
-            sentiment_score = get_weekly_sentiment(name)
+            # 2. 기술적 지표 계산
+            ma20 = df['Close'].rolling(window=20).mean().iloc[-1] # 20일 이동평균선
+            rsi = calculate_rsi(df).iloc[-1] # RSI (과매수/과매도 지표)
             
-            # 예측 로직 (단순 AI 모델 예시: 전일 변동성과 뉴스 점수 결합)
-            # 뉴스 점수가 높고 최근 기세가 좋으면 '상승 예상'
-            prediction_val = round((change_percent * 0.3) + (sentiment_score * 0.7), 2)
-            prediction = "상승 우세" if prediction_val > 0.5 else "하락 우세" if prediction_val < -0.5 else "보합 예상"
+            # 3. 뉴스 점수
+            news_score = get_weekly_sentiment(name)
+            
+            # 4. 종합 예측 점수 (뉴스 40% + 기술적 지표 60%)
+            # - 주가가 20일선 위에 있으면 +, RSI가 30 미만(과매도)이면 + 점수 부여
+            tech_score = 0
+            if curr_price > ma20: tech_score += 1.5
+            if rsi < 35: tech_score += 2.0  # 저평가 매수 기회
+            if rsi > 70: tech_score -= 1.5  # 고평가 위험
+            
+            total_val = round((news_score * 0.4) + (tech_score * 0.6), 2)
+            prediction = "강력 매수" if total_val > 2.0 else "매수 우세" if total_val > 0.5 else "관망" if total_val > -0.5 else "매도 주의"
 
             final_data.append({
                 '순위': len(final_data) + 1,
                 '종목명': name,
                 '현재가': curr_price,
-                '전일대비(%)': change_percent,
-                '뉴스점수': sentiment_score,
-                'AI예측점수': prediction_val,
-                '다음날전망': prediction
+                '20일평균': int(ma20),
+                'RSI(심리도)': round(rsi, 1),
+                '뉴스점수': news_score,
+                'AI종합점수': total_val,
+                '최종전망': prediction
             })
-            print(f"[{len(final_data)}/100] {name} 분석 완료")
-        except:
-            continue
+            print(f"✅ {name} 분석 완료 (RSI: {round(rsi,1)})")
+        except: continue
 
     if final_data:
-        save_name = 'KOSPI_TOP100_AI_Report.xlsx'
+        save_name = 'KOSPI100_Advanced_Report.xlsx'
         pd.DataFrame(final_data).to_excel(save_name, index=False)
         send_telegram(save_name)
-        
 except Exception as e:
-    print(f"🔥 치명적 에러: {e}")
+    print(f"🔥 에러: {e}")
