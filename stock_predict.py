@@ -71,3 +71,23 @@ if stock_results:
     print(f"\n✅ 리포트 생성 완료: {os.path.abspath(save_name)}")
 else:
     print("\n❌ 결과가 없습니다.")
+
+import requests
+
+def send_telegram_msg(file_path):
+    # GitHub Secrets에서 정보 가져오기
+    token = os.environ.get('TELEGRAM_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+    
+    # 1. 요약 메시지 전송
+    text = "📢 [AI 투자 리포트] 분석이 완료되었습니다!\n상세 내용은 엑셀 파일을 확인하세요."
+    requests.get(f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={text}")
+    
+    # 2. 엑셀 파일 전송
+    with open(file_path, 'rb') as f:
+        requests.post(f"https://api.telegram.org/bot{token}/sendDocument", 
+                      data={'chat_id': chat_id}, files={'document': f})
+
+# 리포트 생성 완료 메시지 다음에 이 코드를 실행합니다.
+if os.path.exists('AI_predict_report.xlsx'):
+    send_telegram_msg('AI_predict_report.xlsx')
