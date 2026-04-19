@@ -1,6 +1,10 @@
 name: Stock-AI-Daily-Predictor
+
 on:
-  workflow_dispatch:
+  schedule:
+    # 매일 아침 8시(한국시간) 자동 실행 (UTC 23시)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # 수동 실행 버튼 유지
 
 jobs:
   predict:
@@ -15,6 +19,7 @@ jobs:
           pip install pandas finance-datareader beautifulsoup4 requests openpyxl lxml
       - name: Run script
         env:
+          # 여기서 GitHub Secrets의 값을 코드에 연결해줍니다.
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python stock_predict.py
