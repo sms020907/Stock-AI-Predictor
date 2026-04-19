@@ -4,9 +4,9 @@ on:
   workflow_dispatch: # 버튼 수동 실행 유지
 
   schedule:
-    # 한국 시간 오후 5:00 = UTC 오전 8:00
+    # 한국 시간 오후 4:45 = UTC 오전 7:45
     # 분 시 일 월 요일
-    - cron: '0 8 * * *'
+    - cron: '45 7 * * *'
 
 jobs:
   analyze:
