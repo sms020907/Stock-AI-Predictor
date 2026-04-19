@@ -41,17 +41,23 @@ def send_telegram(file_path):
             print("✅ 텔레그램 전송 완료")
         except Exception as e:
             print(f"❌ 전송 중 에러: {e}")
+    else:
+        print("⚠️ 텔레그램 설정(Token/ID)을 찾을 수 없습니다.")
 
+# 분석 대상 테마 및 종목 (항공/우주 테마 포함)
 THEMES = {
-    '반도체': ['삼성전자', 'SK하이닉스', '한미반도체'],
-    '이차전지': ['에코프로', 'LG에너지솔루션', '포스코홀딩스'],
-    '자동차': ['현대차', '기아'],
-    '항공/우주': ['대한항공', '한국항공우주', '한화에어로스페이스'],
-    '바이오': ['삼성바이오로직스', '셀트리온'],
-    'AI/로봇': ['네이버', '두산로보틱스']
+    '반도체': ['삼성전자', 'SK하이닉스', '한미반도체', '리노공업'],
+    '이차전지': ['에코프로', '에코프로비엠', 'LG에너지솔루션', '삼성SDI'],
+    '자동차': ['현대차', '기아', '현대모비스'],
+    '항공/우주': ['대한항공', '한국항공우주', '한화에어로스페이스', '현대로템'],
+    '전력/구리': ['LS Electric', '효성중공업', 'HD현대일렉트릭'],
+    '바이오': ['삼성바이오로직스', '셀트리온', '알테오젠'],
+    'AI/로봇': ['네이버', '레인보우로보틱스', '두산로보틱스']
 }
 
 stock_results = []
+print("🔍 분석 시작...")
+
 try:
     df_list = fdr.StockListing('KOSPI')
     for theme, stocks in THEMES.items():
@@ -70,6 +76,7 @@ try:
     if stock_results:
         save_name = 'AI_predict_report.xlsx'
         pd.DataFrame(stock_results).to_excel(save_name, index=False)
+        print(f"📊 리포트 저장 완료: {save_name}")
         send_telegram(save_name)
 except Exception as e:
     print(f"🔥 에러 발생: {e}")
