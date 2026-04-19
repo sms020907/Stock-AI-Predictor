@@ -22,7 +22,7 @@ jobs:
 
       - name: Install Libraries
         run: |
-          pip install pandas FinanceDataReader requests beautifulsoup4 lxml openpyxl numpy
+          pip install pandas finance-datareader requests beautifulsoup4 lxml openpyxl numpy
 
       - name: Run Analysis Script
         env:
