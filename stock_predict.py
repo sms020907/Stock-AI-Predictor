@@ -1,5 +1,5 @@
 import pandas as pd
-import finance_datareader as fdr
+import FinanceDataReader as fdr
 import requests
 from bs4 import BeautifulSoup
 import time
