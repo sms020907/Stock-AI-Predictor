@@ -80,14 +80,14 @@ if __name__ == "__main__":
                 
                 # 판정 로직
                 if total_val > 2.2:
-                    prediction = "🔥 강력 매수"
+                    prediction = "강력 매수"
                     strong_buy_count += 1
                 elif total_val > 0.7:
-                    prediction = "✅ 매수 우세"
+                    prediction = "매수 우세"
                 elif total_val > -0.5:
-                    prediction = "👀 관망"
+                    prediction = "관망"
                 else:
-                    prediction = "⚠️ 매도 주의"
+                    prediction = "매도 주의"
 
                 final_data.append({
                     '순위': len(final_data) + 1, '종목명': name, '현재가': curr_price,
