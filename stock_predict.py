@@ -1,5 +1,5 @@
 import pandas as pd
-import FinanceDataReader as fdr  # F, D, R을 대문자로 수정!
+import FinanceDataReader as fdr
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -42,10 +42,16 @@ def send_telegram(file_path):
         except Exception as e:
             print(f"❌ 전송 중 에러: {e}")
 
-# 메인 실행
-THEMES = {'반도체': ['삼성전자', 'SK하이닉스'], '이차전지': ['에코프로', 'LG에너지솔루션']}
-stock_results = []
+THEMES = {
+    '반도체': ['삼성전자', 'SK하이닉스', '한미반도체'],
+    '이차전지': ['에코프로', 'LG에너지솔루션', '포스코홀딩스'],
+    '자동차': ['현대차', '기아'],
+    '항공/우주': ['대한항공', '한국항공우주', '한화에어로스페이스'],
+    '바이오': ['삼성바이오로직스', '셀트리온'],
+    'AI/로봇': ['네이버', '두산로보틱스']
+}
 
+stock_results = []
 try:
     df_list = fdr.StockListing('KOSPI')
     for theme, stocks in THEMES.items():
