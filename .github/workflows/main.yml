@@ -1,18 +1,13 @@
 name: Stock AI Predictor
 
 on:
-  workflow_dispatch:      # 구글 앱스 스크립트용
-  repository_dispatch:    # 텔레그램 버튼(/start)용
-    types: [telegram_start]
+  workflow_dispatch:      # 구글 앱스 스크립트(GAS)용
+  repository_dispatch:    # 텔레그램 버튼용 (모든 신호 수용)
   schedule:
     - cron: '30 23 * * *' # 백업용 아침 8시 30분
 
 jobs:
   build:
-    # 텔레그램 버튼을 눌렀을 때(repository_dispatch)나 
-    # 구글/수동으로 실행했을 때(workflow_dispatch, schedule) 모두 실행되게 설정
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || github.event_name == 'schedule'
-    
     runs-on: ubuntu-latest
 
     steps:
