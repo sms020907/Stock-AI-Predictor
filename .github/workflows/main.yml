@@ -1,31 +1,38 @@
-name: Stock AI Predictor Test Mode
+name: Stock AI Predictor
 
 on:
-  workflow_dispatch: # 버튼 수동 실행 유지
-
+  # 1. 구글 앱스 스크립트(GAS) 신호를 받기 위한 설정
+  workflow_dispatch:
+  
+  # 2. 텔레그램 /start 버튼 신호를 받기 위한 설정
+  repository_dispatch:
+    types: [telegram_start]
+    
+  # 3. 깃허브 자체 스케줄러 (혹시 모를 백업용 - 아침 8시 30분)
   schedule:
-    # 한국 시간 오후 4:45 = UTC 오전 7:45
-    # 분 시 일 월 요일
-    - cron: '00 10 * * *'
+    - cron: '30 23 * * *'
 
 jobs:
-  analyze:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: ambassadors/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.9'
 
-      - name: Install Libraries
+      - name: Install dependencies
         run: |
-          pip install pandas finance-datareader requests beautifulsoup4 lxml openpyxl numpy
+          python -m pip install --upgrade pip
+          pip install pandas pandas_datareader yfinance scikit-learn matplotlib requests tautulli-telegram-notification python-telegram-bot
 
-      - name: Run Analysis Script
+      - name: Run Stock Prediction
         env:
+          # 여기에 민성님의 텔레그램 토큰과 ID가 환경변수로 등록되어 있어야 합니다.
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python stock_predict.py # 파일 이름이 다르면 꼭 수정하세요!
+        run: python stock_predict.py
