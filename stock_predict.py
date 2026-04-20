@@ -125,3 +125,10 @@ if __name__ == "__main__":
 
     except Exception as e:
         send_telegram_msg(f"🔥 에러 발생: {e}")
+
+function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  if (data.message && data.message.text === "/start") {
+    callGithubAction(); // 깃허브를 깨우는 함수 호출
+  }
+}
