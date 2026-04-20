@@ -5,29 +5,43 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import os
 import numpy as np
-import time # 시간 지연용 추가
+import time
+import json
 
-# [보완] 텔레그램 전송 함수 (에러 로깅 강화)
-def send_telegram_msg(msg):
+# [수정] 텔레그램 전송 함수 (버튼 기능 추가)
+def send_telegram_msg(msg, show_button=False):
     token = os.environ.get('TELEGRAM_TOKEN', '').strip()
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
+    github_token = os.environ.get('GH_TOKEN') # 깃허브 신호를 보내기 위한 토큰
+
     if token and chat_id:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {'chat_id': chat_id, 'text': msg}
+        
+        # 분석 완료 메시지일 때만 '다시 분석하기' 버튼 추가
+        if show_button:
+            reply_markup = {
+                "inline_keyboard": [[
+                    {"text": "🔄 지금 다시 분석하기", "callback_data": "run_analysis"}
+                ]]
+            }
+            payload['reply_markup'] = json.dumps(reply_markup)
+            
         try:
-            requests.get(url, params={'chat_id': chat_id, 'text': msg}, timeout=10)
+            requests.post(url, json=payload, timeout=10)
         except Exception as e:
             print(f"텔레그램 전송 실패: {e}")
 
-# [보완] RSI 계산 (NaN 방어 로직 추가)
+# RSI 계산 함수
 def calculate_rsi(df, period=14):
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     rs = gain / loss
     rsi = 100 - (100 / (1+rs))
-    return rsi.fillna(50) # 데이터 부족 시 50으로 채움
+    return rsi.fillna(50)
 
-# [보완] 뉴스 분석 (날짜 필터 및 키워드 강화)
+# 뉴스 분석 함수
 def get_weekly_sentiment(name):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=7)
@@ -50,13 +64,13 @@ def get_weekly_sentiment(name):
     return round(score, 2)
 
 if __name__ == "__main__":
-    send_telegram_msg("🚀 [민성 Stock-AI] 분석 서버 가동! 코스피 100대 기업의 '최근 일주일' 트렌드를 분석합니다.")
+    send_telegram_msg("🚀 [민성 Stock-AI] 분석 서버 가동! 코스피 100대 기업 트렌드를 분석합니다.")
 
     try:
         df_kospi = fdr.StockListing('KOSPI')
         top_100 = df_kospi.head(100)
         final_data = []
-        strong_buy_count = 0 # 강력매수 개수 카운트용
+        strong_buy_count = 0
         
         start_search = (datetime.now() - timedelta(days=50)).strftime('%Y-%m-%d')
         
@@ -78,7 +92,6 @@ if __name__ == "__main__":
                 
                 total_val = round((news_score * 0.4) + (tech_score * 0.6), 2)
                 
-                # 판정 로직
                 if total_val > 2.2:
                     prediction = "강력 매수"
                     strong_buy_count += 1
@@ -94,16 +107,16 @@ if __name__ == "__main__":
                     'RSI(심리)': round(rsi, 1), '뉴스점수': news_score, 
                     'AI종합점수': total_val, '최종전망': prediction
                 })
-                time.sleep(0.05) # 서버 과부하 방지용 미세 지연
+                time.sleep(0.05)
             except: continue
 
         if final_data:
             save_name = 'Stock_Weekly_Report.xlsx'
             pd.DataFrame(final_data).to_excel(save_name, index=False)
             
-            # [보완] 분석 결과 요약 메시지 전송
-            summary = f"📊 분석 완료!\n- 분석 종목: {len(final_data)}개\n- 🔥 강력 매수: {strong_buy_count}개 발견\n\n상세 리포트(엑셀)를 확인하세요!"
-            send_telegram_msg(summary)
+            summary = f"📊 분석 완료!\n- 분석 종목: {len(final_data)}개\n- 🔥 강력 매수: {strong_buy_count}개 발견\n\n원하실 때 아래 버튼을 누르면 다시 분석합니다!"
+            # [수정] 버튼 표시 옵션 활성화
+            send_telegram_msg(summary, show_button=True)
             
             token = os.environ.get('TELEGRAM_TOKEN', '').strip()
             chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
