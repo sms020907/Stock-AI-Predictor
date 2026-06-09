@@ -5,7 +5,7 @@ on:
   repository_dispatch:
     types: [telegram_start]
   schedule:
-    - cron: '30 23 * * *'
+    - cron: '30 23 * * * -- 이부분에' 넣으면 작동
 
 jobs:
   build:
